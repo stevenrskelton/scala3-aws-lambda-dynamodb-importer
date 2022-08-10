@@ -1,66 +1,76 @@
+import com.amazonaws.lambda.thirdparty.com.fasterxml.jackson.annotation.JsonProperty
 import com.amazonaws.services.lambda.runtime.{Context, RequestHandler}
-import software.amazon.awssdk.auth.credentials.ProfileCredentialsProvider
+import software.amazon.awssdk.auth.credentials.{AwsCredentialsProvider, DefaultCredentialsProvider, ProfileCredentialsProvider}
 import software.amazon.awssdk.core.SdkBytes
 import software.amazon.awssdk.profiles.ProfileFile
-import software.amazon.awssdk.protocols.jsoncore.JsonNodeParser
+import software.amazon.awssdk.protocols.jsoncore.{JsonNode, JsonNodeParser}
 import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient
 import software.amazon.awssdk.services.dynamodb.model.{AttributeValue, PutItemRequest}
 
-import scala.jdk.CollectionConverters.*
 import java.nio.file.Path
 import java.util.Base64
+import scala.jdk.CollectionConverters.*
+import scala.util.Try
 
-class Handler extends RequestHandler[Map[String, String], String] {
+class StockPriceItem {
+  @JsonProperty("stockId") var stockId: String = ""
+  @JsonProperty("tradingDay") var tradingDay: String = ""
+  @JsonProperty("proto") var proto: String = ""
 
-  private val jsonNodeParser = JsonNodeParser.create
+  def toDynamoAttributeMap: java.util.Map[String, AttributeValue] = {
+    if (stockId == null) throw new Exception("Missing `stockId`")
+    if (tradingDay == null) throw new Exception("Missing `tradingDay`")
+    if (proto == null) throw new Exception("Missing `proto`")
+
+    val protoByteArray = Try(Base64.getDecoder.decode(proto)).getOrElse {
+      throw new Exception(s"Could not decode base64: `$proto`")
+    }
+    Map(
+      "stockId" -> AttributeValue.builder.n(stockId).build,
+      "tradingDay" -> AttributeValue.builder.n(tradingDay).build,
+      "proto" -> AttributeValue.builder.b(SdkBytes.fromByteArray(protoByteArray)).build
+    ).asJava
+  }
+}
+
+class Handler extends RequestHandler[java.util.List[StockPriceItem], String] {
 
   private val dynamoDbClient = {
     val path = Path.of("./src/main/resources/aws_credentials.txt")
-    val profileFile = ProfileFile.builder.content(path).`type`(ProfileFile.Type.CREDENTIALS).build
-    val credentialsProvider = ProfileCredentialsProvider.builder.profileFile(profileFile).build
+    val credentialsProvider: AwsCredentialsProvider = if (path.toFile.exists) {
+      val profileFile = ProfileFile.builder.content(path).`type`(ProfileFile.Type.CREDENTIALS).build
+      ProfileCredentialsProvider.builder.profileFile(profileFile).build
+    } else {
+      DefaultCredentialsProvider.create()
+    }
     DynamoDbClient.builder
       .credentialsProvider(credentialsProvider)
       .region(Region.US_EAST_1)
       .build
   }
 
-  override def handleRequest(event: Map[String, String], context: Context): String = {
+  override def handleRequest(event: java.util.List[StockPriceItem], context: Context): String = {
 
-    val json = "{\"title\":\"Thinking in Java\",\"isbn\":\"978-0131872486\"" +
-      ",\"year\":1998,\"authors\":[\"Bruce Eckel\"]}";
-    
-    val attributeNodes = jsonNodeParser.parse(event.get("body?").get).asArray.asScala
-    val item = attributeNodes.map {
-      jsNode =>
-        val jsonObject = jsNode.asObject
-        val attributeName = jsonObject.get("name").asString
-        val attributeValue = if(jsonObject.containsKey("n")){
-          val n = jsonObject.get("n").asString
-          AttributeValue.builder.n(n).build
-        }else if(jsonObject.containsKey("s")) {
-          val s = jsonObject.get("s").asString
-          AttributeValue.builder.s(s).build
-        }else if(jsonObject.containsKey("b")) {
-          val base64 = jsonObject.get("b").asString
-          val b = SdkBytes.fromByteArray(Base64.getDecoder.decode(base64))
-          AttributeValue.builder.b(b).build
-        }else{
-          val attributeKeys = jsonObject.keySet.asScala.withFilter(_ != "name").map("`" + _ + "`").mkString(",")
-          throw new Exception(s"Unknown attribute type in $attributeKeys")
+    val lambdaLogger = context.getLogger
+    lambdaLogger.log("event=" + event.asScala.map(o => s"stockId:${Option(o.stockId).getOrElse("[null]")},tradingDay:${Option(o.tradingDay).getOrElse("[null]")},proto:${Option(o.proto).getOrElse("[null]")}").mkString(","))
+
+    val stockPrices = event.asScala
+    stockPrices.foreach {
+      stockPriceItem =>
+        val request = PutItemRequest.builder.tableName("stockdaily_price").item(stockPriceItem.toDynamoAttributeMap).build
+        val putItemResponse = dynamoDbClient.putItem(request)
+        val sdkResponse = putItemResponse.sdkHttpResponse
+        if (sdkResponse.isSuccessful) {
+          lambdaLogger.log("Success")
+        } else {
+          val message = s"${sdkResponse.statusCode}${sdkResponse.statusText.map(" " + _)}"
+          lambdaLogger.log(s"Error: $message")
+          throw new Exception(message)
         }
-        (attributeName, attributeValue)
-    }.toMap.asJava
-
-    val request = PutItemRequest.builder.tableName("stockdaily_price").item(item).build
-    val putItemResponse = dynamoDbClient.putItem(request)
-    val sdkResponse = putItemResponse.sdkHttpResponse
-    if(sdkResponse.isSuccessful){
-      putItemResponse.consumedCapacity.capacityUnits.toString
-    }else{
-      val message = s"${sdkResponse.statusCode}${sdkResponse.statusText.map(" " + _)}"
-      throw new Exception(message)
     }
+
+    "Success"
   }
 
 }
