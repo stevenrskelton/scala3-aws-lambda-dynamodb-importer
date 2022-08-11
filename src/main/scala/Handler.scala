@@ -26,6 +26,7 @@ class StockPriceItem {
     val protoByteArray = Try(Base64.getDecoder.decode(proto)).getOrElse {
       throw new Exception(s"Could not decode base64: `$proto`")
     }
+
     Map(
       "stockId" -> AttributeValue.builder.n(stockId).build,
       "tradingDay" -> AttributeValue.builder.n(tradingDay).build,
