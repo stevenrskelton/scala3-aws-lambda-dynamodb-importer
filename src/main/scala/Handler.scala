@@ -13,9 +13,9 @@ import java.util.Base64
 import scala.jdk.CollectionConverters.*
 import scala.util.Try
 
-class Handler extends RequestHandler[java.util.List[StockPriceItem], String] {
+class Handler extends RequestHandler[java.util.List[StockPriceItem], String] :
 
-  private val dynamoDbClient = {
+  private val dynamoDbClient =
     val path = Path.of("./src/main/resources/aws_credentials.txt")
     val credentialsProvider: AwsCredentialsProvider = if (path.toFile.exists) {
       val profileFile = ProfileFile.builder.content(path).`type`(ProfileFile.Type.CREDENTIALS).build
@@ -27,11 +27,11 @@ class Handler extends RequestHandler[java.util.List[StockPriceItem], String] {
       .credentialsProvider(credentialsProvider)
       .region(Region.US_EAST_1)
       .build
-  }
 
-  override def handleRequest(event: java.util.List[StockPriceItem], context: Context): String = {
+  override def handleRequest(event: java.util.List[StockPriceItem], context: Context): String =
 
     val lambdaLogger = context.getLogger
+
     lambdaLogger.log("event=" + event.asScala.map {
       o => s"stockId:${Option(o.stockId).getOrElse("[null]")},tradingDay:${Option(o.tradingDay).getOrElse("[null]")},proto:${Option(o.proto).getOrElse("[null]")}"
     }.mkString(","))
@@ -52,18 +52,15 @@ class Handler extends RequestHandler[java.util.List[StockPriceItem], String] {
         }
     }
 
-    val max = tradingDaysAdded.max
-    max.toString
-  }
+    tradingDaysAdded.max.toString
 
-}
 
-class StockPriceItem {
+class StockPriceItem:
   @JsonProperty("stockId") var stockId: String = ""
   @JsonProperty("tradingDay") var tradingDay: String = ""
   @JsonProperty("proto") var proto: String = ""
 
-  val dynamoAttributeMap: java.util.Map[String, AttributeValue] = {
+  val dynamoAttributeMap: java.util.Map[String, AttributeValue] =
     require(stockId != null, "Missing `stockId`")
     require(tradingDay != null, "Missing `tradingDay`")
     require(proto != null, "Missing `proto`")
@@ -76,5 +73,3 @@ class StockPriceItem {
       "tradingDay" -> AttributeValue.builder.n(tradingDay).build,
       "proto" -> AttributeValue.builder.b(SdkBytes.fromByteArray(protoByteArray)).build
     ).asJava
-  }
-}
