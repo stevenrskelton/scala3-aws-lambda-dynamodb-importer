@@ -18,7 +18,7 @@ class StockPriceItem:
   @JsonProperty("tradingDay") var tradingDay: String = ""
   @JsonProperty("proto") var proto: String = ""
 
-  val dynamoAttributeMap: java.util.Map[String, AttributeValue] =
+  def dynamoAttributeMap: java.util.Map[String, AttributeValue] =
     require(stockId != null, "Missing `stockId`")
     require(tradingDay != null, "Missing `tradingDay`")
     require(proto != null, "Missing `proto`")
