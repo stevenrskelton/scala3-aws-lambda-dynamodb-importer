@@ -13,6 +13,25 @@ import java.util.Base64
 import scala.jdk.CollectionConverters.*
 import scala.util.Try
 
+class StockPriceItem:
+  @JsonProperty("stockId") var stockId: String = ""
+  @JsonProperty("tradingDay") var tradingDay: String = ""
+  @JsonProperty("proto") var proto: String = ""
+
+  val dynamoAttributeMap: java.util.Map[String, AttributeValue] =
+    require(stockId != null, "Missing `stockId`")
+    require(tradingDay != null, "Missing `tradingDay`")
+    require(proto != null, "Missing `proto`")
+
+    val protoByteArray = try Base64.getDecoder.decode(proto) catch
+      case ex => throw new Exception(s"Could not decode base64: `$proto`", ex)
+
+    Map(
+      "stockId" -> AttributeValue.builder.n(stockId).build,
+      "tradingDay" -> AttributeValue.builder.n(tradingDay).build,
+      "proto" -> AttributeValue.builder.b(SdkBytes.fromByteArray(protoByteArray)).build
+    ).asJava
+
 class Handler extends RequestHandler[java.util.List[StockPriceItem], String] :
 
   private val dynamoDbClient =
@@ -53,23 +72,3 @@ class Handler extends RequestHandler[java.util.List[StockPriceItem], String] :
     }
 
     tradingDaysAdded.max.toString
-
-
-class StockPriceItem:
-  @JsonProperty("stockId") var stockId: String = ""
-  @JsonProperty("tradingDay") var tradingDay: String = ""
-  @JsonProperty("proto") var proto: String = ""
-
-  val dynamoAttributeMap: java.util.Map[String, AttributeValue] =
-    require(stockId != null, "Missing `stockId`")
-    require(tradingDay != null, "Missing `tradingDay`")
-    require(proto != null, "Missing `proto`")
-
-    val protoByteArray = try Base64.getDecoder.decode(proto) catch
-      case ex => throw new Exception(s"Could not decode base64: `$proto`", ex)
-
-    Map(
-      "stockId" -> AttributeValue.builder.n(stockId).build,
-      "tradingDay" -> AttributeValue.builder.n(tradingDay).build,
-      "proto" -> AttributeValue.builder.b(SdkBytes.fromByteArray(protoByteArray)).build
-    ).asJava
