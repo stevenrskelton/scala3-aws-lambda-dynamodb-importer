@@ -35,6 +35,8 @@ jobs:
         aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         aws_region: "us-east-1"
         function_name: "dynamo-import"
-        zip_file: "./aws-lambda-dynamo-import-assembly-0.1.0.jar"
+        zip_file: "./target/scala-3.1.3/aws-lambda-dynamo-import-assembly-0.1.0.jar"
         dry_run: true
         publish: false
+        runtime: "java11"
+        debug: true
