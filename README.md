@@ -1,2 +1,2 @@
-# aws-lambda-dynamo-import
-Lambda function that inserts new items into a DynamoDB table
+# scala3-aws-lambda-dynamodb-importer
+AWS Lambda function that handles URL POST requests to insert items into a DynamoDB table.
