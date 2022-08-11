@@ -56,13 +56,14 @@ class Handler extends RequestHandler[java.util.List[StockPriceItem], String] {
     lambdaLogger.log("event=" + event.asScala.map(o => s"stockId:${Option(o.stockId).getOrElse("[null]")},tradingDay:${Option(o.tradingDay).getOrElse("[null]")},proto:${Option(o.proto).getOrElse("[null]")}").mkString(","))
 
     val stockPrices = event.asScala
-    stockPrices.foreach {
+    val tradingDaysAdded = stockPrices.map {
       stockPriceItem =>
         val request = PutItemRequest.builder.tableName("stockdaily_price").item(stockPriceItem.toDynamoAttributeMap).build
         val putItemResponse = dynamoDbClient.putItem(request)
         val sdkResponse = putItemResponse.sdkHttpResponse
         if (sdkResponse.isSuccessful) {
           lambdaLogger.log("Success")
+          stockPriceItem.tradingDay.toLong
         } else {
           val message = s"${sdkResponse.statusCode}${sdkResponse.statusText.map(" " + _)}"
           lambdaLogger.log(s"Error: $message")
@@ -70,7 +71,8 @@ class Handler extends RequestHandler[java.util.List[StockPriceItem], String] {
         }
     }
 
-    "Success"
+    val max = tradingDaysAdded.max
+    max.toString
   }
 
 }

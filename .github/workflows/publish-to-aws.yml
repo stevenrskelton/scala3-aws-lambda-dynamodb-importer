@@ -1,0 +1,40 @@
+name: Publish to AWS
+
+on:
+  workflow_dispatch:
+#   push:
+#     branches: [ master ]
+#   pull_request:
+#     branches: [ master ]
+
+env:
+  GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: Set up JDK 11
+      uses: actions/setup-java@v3
+      with:
+        java-version: '11'
+        distribution: 'temurin'
+    - name: Build Assembly
+      run: sbt assembly
+    - name: AWS Lambda Deploy
+      uses: appleboy/lambda-action@master
+      with:
+        aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws_region: "us-east-1"
+        function_name: "dynamo-import"
+        zip_file: "./aws-lambda-dynamo-import-assembly-0.1.0.jar"
+        dry_run: true
+        publish: false
