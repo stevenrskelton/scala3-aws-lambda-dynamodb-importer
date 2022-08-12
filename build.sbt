@@ -9,7 +9,7 @@ lazy val root = project
     javacOptions ++= Seq("-source", "11", "-target", "11"),
     libraryDependencies ++= Seq(
       "com.amazonaws" % "aws-lambda-java-core" % "1.2.1",
-      "com.amazonaws" % "aws-lambda-java-serialization" % "1.0.0",
+      "com.amazonaws" % "aws-lambda-java-events" % "3.11.0",
       "software.amazon.awssdk" % "dynamodb" % "2.17.248",
       "org.scalameta" %% "munit" % "0.7.29" % Test
     ),
@@ -19,4 +19,3 @@ lazy val root = project
       case x => MergeStrategy.first
     }
   )
-
