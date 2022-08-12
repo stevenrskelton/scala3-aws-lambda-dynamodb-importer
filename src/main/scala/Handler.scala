@@ -1,5 +1,9 @@
-import com.amazonaws.lambda.thirdparty.com.fasterxml.jackson.annotation.JsonProperty
-import com.amazonaws.services.lambda.runtime.{Context, RequestHandler}
+import java.nio.file.Path
+import java.util.Base64
+
+import com.amazonaws.services.lambda.runtime.events.{APIGatewayV2HTTPEvent, APIGatewayV2HTTPResponse}
+import com.amazonaws.services.lambda.runtime.{Context, LambdaLogger, RequestHandler}
+
 import software.amazon.awssdk.auth.credentials.{AwsCredentialsProvider, DefaultCredentialsProvider, ProfileCredentialsProvider}
 import software.amazon.awssdk.core.SdkBytes
 import software.amazon.awssdk.profiles.ProfileFile
@@ -8,38 +12,11 @@ import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient
 import software.amazon.awssdk.services.dynamodb.model.{AttributeValue, PutItemRequest}
 
-import java.nio.file.Path
-import java.util.Base64
 import scala.jdk.CollectionConverters.*
-import scala.util.Try
+import scala.jdk.OptionConverters.*
+import scala.util.{Failure, Success, Try}
 
-class Handler extends RequestHandler[java.util.List[StockPriceItem], String] :
-
-  override def handleRequest(event: java.util.List[StockPriceItem], context: Context): String =
-
-    val lambdaLogger = context.getLogger
-
-    lambdaLogger.log("event=" + event.asScala.map {
-      o => s"stockId:${Option(o.stockId).getOrElse("[null]")},tradingDay:${Option(o.tradingDay).getOrElse("[null]")},proto:${Option(o.proto).getOrElse("[null]")}"
-    }.mkString(","))
-
-    val stockPrices = event.asScala
-    val tradingDaysAdded = stockPrices.map {
-      stockPriceItem =>
-        val request = PutItemRequest.builder.tableName("stockdaily_price").item(stockPriceItem.dynamoAttributeMap).build
-        val putItemResponse = dynamoDbClient.putItem(request)
-        val sdkResponse = putItemResponse.sdkHttpResponse
-        if (sdkResponse.isSuccessful) {
-          lambdaLogger.log("Success")
-          stockPriceItem.tradingDay.toLong
-        } else {
-          val message = s"${sdkResponse.statusCode}${sdkResponse.statusText.map(" " + _)}"
-          lambdaLogger.log(s"Error: $message")
-          throw new Exception(message)
-        }
-    }
-
-    tradingDaysAdded.max.toString
+val tableName = "stock_prices"
 
 val dynamoDbClient =
   val path = Path.of("./src/main/resources/aws_credentials.txt")
@@ -54,21 +31,64 @@ val dynamoDbClient =
     .region(Region.US_EAST_1)
     .build
 
-class StockPriceItem:
-  @JsonProperty("stockId") var stockId: String = ""
-  @JsonProperty("tradingDay") var tradingDay: String = ""
-  @JsonProperty("proto") var proto: String = ""
+def errorToResult(ex: Throwable)(using lambdaLogger: LambdaLogger): APIGatewayV2HTTPResponse =
+  ex match
+    case ParseException(error, content) =>
+      val message = s"Error parsing request $error in $content"
+      lambdaLogger.log(message)
+      APIGatewayV2HTTPResponse.builder.withStatusCode(400).withBody(message).build
+    case _ =>
+      throw ex
 
-  def dynamoAttributeMap: java.util.Map[String, AttributeValue] =
-    require(stockId != null, "Missing `stockId`")
-    require(tradingDay != null, "Missing `tradingDay`")
-    require(proto != null, "Missing `proto`")
+def parseStockPriceItems(json: String)(using lambdaLogger: LambdaLogger): Try[Iterable[StockPriceItem]] =
+  lambdaLogger.log(json)
+  Try {
+    val items = JsonNodeParser.create.parse(json).asArray.asScala.map(StockPriceItem.apply)
+    val msg = "event=" + items.map {
+      item => s"symbol:${item.symbol},time:${item.time},prices:${item.prices}"
+    }.mkString(",")
+    lambdaLogger.log(msg)
+    items
+  }
 
-    val protoByteArray = try Base64.getDecoder.decode(proto) catch
-      case ex => throw new Exception(s"Could not decode base64: `$proto`", ex)
+def putIntoDynamoDB(stockPriceItems: Iterable[StockPriceItem])(using lambdaLogger: LambdaLogger): Try[Long] = Try {
+  val addedTimes = stockPriceItems.map {
+    stockPriceItem =>
+      val request = PutItemRequest.builder.tableName(tableName).item(stockPriceItem.dynamoDBAttributeMap).build
+      val putItemResponse = dynamoDbClient.putItem(request)
+      val sdkResponse = putItemResponse.sdkHttpResponse
+      if (sdkResponse.isSuccessful) {
+        lambdaLogger.log("Success")
+        stockPriceItem.time.toLong
+      } else {
+        val message = s"${sdkResponse.statusCode}${sdkResponse.statusText.map(" " + _)}"
+        lambdaLogger.log(s"Error: $message")
+        throw new Exception(message)
+      }
+  }
+  addedTimes.max
+}
 
-    Map(
-      "stockId" -> AttributeValue.builder.n(stockId).build,
-      "tradingDay" -> AttributeValue.builder.n(tradingDay).build,
-      "proto" -> AttributeValue.builder.b(SdkBytes.fromByteArray(protoByteArray)).build
-    ).asJava
+case class ParseException(error: String, content: String) extends Exception(error)
+
+class Handler extends RequestHandler[APIGatewayV2HTTPEvent, APIGatewayV2HTTPResponse] :
+
+  override def handleRequest(event: APIGatewayV2HTTPEvent, context: Context): APIGatewayV2HTTPResponse =
+    given lambdaLogger: LambdaLogger = context.getLogger
+
+    lambdaLogger.log("Start")
+    lambdaLogger.log(event.getBody)
+
+    val body = Option(event.getBody).withFilter(!_.isBlank)
+      .map(Success(_))
+      .getOrElse(Failure(ParseException("empty body", "''")))
+
+    body
+      .flatMap(parseStockPriceItems)
+      .flatMap(putIntoDynamoDB)
+      .fold(errorToResult, maxTimeAdded =>
+        APIGatewayV2HTTPResponse.builder
+          .withStatusCode(200)
+          .withBody(s"""{ "maxTimeAdded": $maxTimeAdded }""")
+          .build
+      )
