@@ -24,8 +24,8 @@ jobs:
       with:
         java-version: '11'
         distribution: 'temurin'
-    - name: Build Assembly
-      run: sbt assembly
+    - name: Run Tests and Build Assembly
+      run: sbt test assembly
     - name: AWS Update Lambda Action
       uses: stcalica/update-lambda@359ca7975ee5cc5c389fc84b0e11532e39f7b707
       with:
