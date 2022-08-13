@@ -22,7 +22,7 @@ Features:
 ### https://www.stevenskelton.ca/jvm-versus-python-aws-lambda-functions/
 
 |                           | Scala / JVM | Python    |
-|---------------------------|-------------|-----------|
+|---------------------------|------------:|----------:|
 | Lines of Code             | 86          | 61        |
 | File size                 | 17.6 MB     | 1.7 KB    |
 | Cold Start                |             |           |
