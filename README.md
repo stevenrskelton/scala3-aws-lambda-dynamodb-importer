@@ -19,7 +19,7 @@ Features:
 
 
 ## JVM versus Python
-### https://www.stevenskelton.ca/jvm-verus-python-aws-lambda-functions/
+### https://www.stevenskelton.ca/jvm-versus-python-aws-lambda-functions/
 
 |                           | Scala / JVM | Python    |
 |---------------------------|-------------|-----------|
