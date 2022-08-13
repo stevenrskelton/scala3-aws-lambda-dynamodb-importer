@@ -29,7 +29,7 @@ Features:
 |   Init duration           | 429.39 ms   | 315.41 ms |
 |   Duration                | 11077.39 ms | 274.72 ms |
 |   Max memory used         | 152 MB      | 67 MB     |
-| Hot-Boot Execution Time   |             |           |
+| Hot-Boot                  |             |           |
 |   Duration                | 21.48 ms    | 13.97 ms  |
 |   Max memory used         | 153 MB      | 70 MB     |
 
