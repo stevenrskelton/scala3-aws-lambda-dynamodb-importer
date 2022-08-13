@@ -1,9 +1,8 @@
-import java.util.Base64
-
 import software.amazon.awssdk.core.SdkBytes
 import software.amazon.awssdk.protocols.jsoncore.JsonNode
 import software.amazon.awssdk.services.dynamodb.model.AttributeValue
 
+import java.util.Base64
 import scala.jdk.CollectionConverters.*
 import scala.jdk.OptionConverters.*
 import scala.util.Try
@@ -20,7 +19,7 @@ object StockPriceItem:
       () => ParseException(s"`$fieldName` not found", jsonNode.toString)
     }
 
-  def apply(jsonNode: JsonNode):StockPriceItem = StockPriceItem(
+  def apply(jsonNode: JsonNode): StockPriceItem = StockPriceItem(
     parseField(jsonNode, "symbol"),
     parseField(jsonNode, "time", isNumber = true),
     parseField(jsonNode, "prices")
