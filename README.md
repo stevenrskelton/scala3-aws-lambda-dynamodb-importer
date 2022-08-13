@@ -20,6 +20,7 @@ Features:
 
 ## JVM versus Python
 ### https://www.stevenskelton.ca/jvm-versus-python-aws-lambda-functions/
+Python implementations is at [/main/src/main/python/handler.py](/blob/main/src/main/python/handler.py)
 
 |                           | Scala / JVM | Python    |
 |---------------------------|------------:|----------:|
