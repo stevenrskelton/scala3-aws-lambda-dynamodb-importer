@@ -7,7 +7,8 @@ Github Action to automatically push new builds to AWS as part of a CI/CD pipelin
 [![Publish to AWS](https://github.com/stevenrskelton/scala3-aws-lambda-dynamodb-importer/actions/workflows/publish-to-aws.yml/badge.svg)](https://github.com/stevenrskelton/scala3-aws-lambda-dynamodb-importer/actions/workflows/publish-to-aws.yml)
 
 ## AWS Lambda with interaction to other AWS services and CI/CD
-### See the blog post at https://www.stevenskelton.ca/scala-3-aws-lambda-functions/
+### See the blog post at 
+### https://www.stevenskelton.ca/scala-3-aws-lambda-functions/
 
 Features:
 - Read JSON from HTTP body
