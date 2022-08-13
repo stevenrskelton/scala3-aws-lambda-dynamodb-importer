@@ -58,8 +58,8 @@ def putIntoDynamoDB(stockPriceItems: Iterable[StockPriceItem])(using lambdaLogge
   val requestItems = Map(tableName -> writeRequests.toList.asJava).asJava
   val batchWriteItemRequest = BatchWriteItemRequest.builder.requestItems(requestItems).build
   val batchWriteItemResponse = dynamoDbClient.batchWriteItem(batchWriteItemRequest)
-  if (batchWriteItemResponse.hasUnprocessedItems) {
-    val message = s"Wrote ${batchWriteItemResponse.unprocessedItems.size} of ${writeRequests.size}"
+  if (batchWriteItemResponse.hasUnprocessedItems && batchWriteItemResponse.unprocessedItems.size > 0) {
+    val message = s"Wrote ${writeRequests.size - batchWriteItemResponse.unprocessedItems.size} of ${writeRequests.size}"
     throw new Exception(message)
   } else {
     lambdaLogger.log("Success")
