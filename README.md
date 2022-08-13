@@ -13,9 +13,9 @@ Features:
 - Read JSON from HTTP body
 - Batch Put to DynamoDB
 - JSON response containing put count
-- Descriptive Exception for Missing Body
-- Descriptive Exception for Missing Fields
-- Logging for Unhandled Exceptions
+- Descriptive exception for missing body
+- Descriptive exception for missing fields
+- AWS CloudWatch logging for unhandled exceptions
 
 
 ## JVM versus Python
