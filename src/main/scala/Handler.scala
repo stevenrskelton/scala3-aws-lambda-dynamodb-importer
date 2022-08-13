@@ -16,7 +16,7 @@ import scala.jdk.CollectionConverters.*
 import scala.jdk.OptionConverters.*
 import scala.util.{Failure, Success, Try}
 
-val tableName = "stock_prices"
+val tableName = "demo_stock_prices"
 
 val dynamoDbClient =
   val path = Path.of("./src/main/resources/aws_credentials.txt")

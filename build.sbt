@@ -2,7 +2,7 @@ lazy val root = project
   .in(file("."))
   .settings(
     name := "scala3-aws-lambda-dynamodb-importer",
-    organization := "ca.stevenskelton.awslambda.dynamoimport",
+    organization := "ca.stevenskelton.blog",
     description := "Lambda function that inserts new items into a DynamoDB table",
     version := "0.1.0",
     scalaVersion := "3.1.3",
